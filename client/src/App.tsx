@@ -10,13 +10,13 @@ function App() {
     setIsBooting(false);
   }, []);
 
-  if (isBooting) {
-    return <BootScreen onBootComplete={handleBootComplete} />;
-  }
-
   return (
     <OSProvider>
-      <Desktop />
+      {isBooting ? (
+        <BootScreen onBootComplete={handleBootComplete} />
+      ) : (
+        <Desktop />
+      )}
     </OSProvider>
   );
 }

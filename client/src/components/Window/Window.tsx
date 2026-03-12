@@ -74,8 +74,8 @@ export function Window({ window: win, children }: WindowProps) {
       e.preventDefault();
       e.stopPropagation();
 
-      const minWidth = win.minWidth ?? 200;
-      const minHeight = win.minHeight ?? 150;
+      const minWidth = win.minWidth ?? 300;
+      const minHeight = win.minHeight ?? 200;
 
       resizeStart.current = {
         x: e.clientX,
@@ -101,7 +101,6 @@ export function Window({ window: win, children }: WindowProps) {
         let newWidth = resizeStart.current.width;
         let newHeight = resizeStart.current.height;
 
-        // Handle horizontal resizing
         if (direction.includes('e')) {
           newWidth = Math.max(resizeStart.current.width + deltaX, minWidth);
         } else if (direction.includes('w')) {
@@ -116,7 +115,6 @@ export function Window({ window: win, children }: WindowProps) {
           }
         }
 
-        // Handle vertical resizing
         if (direction.includes('s')) {
           newHeight = Math.max(resizeStart.current.height + deltaY, minHeight);
         } else if (direction.includes('n')) {
@@ -236,10 +234,8 @@ export function Window({ window: win, children }: WindowProps) {
       <div className="border-inset bg-win-gray m-0.5 flex-1 overflow-auto border-2">
         {children}
       </div>
-      {/* Resize handles */}
       {!win.isMaximized && (
         <>
-          {/* Edge handles */}
           <div
             className="absolute top-0 right-1 left-1 h-1 cursor-n-resize"
             onMouseDown={(e) => handleResizeMouseDown(e, 'n')}
@@ -256,7 +252,6 @@ export function Window({ window: win, children }: WindowProps) {
             className="absolute top-1 bottom-1 left-0 w-1 cursor-w-resize"
             onMouseDown={(e) => handleResizeMouseDown(e, 'w')}
           />
-          {/* Corner handles */}
           <div
             className="absolute top-0 left-0 h-2 w-2 cursor-nw-resize"
             onMouseDown={(e) => handleResizeMouseDown(e, 'nw')}
