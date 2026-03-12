@@ -1,12 +1,12 @@
 import { useEffect, useRef } from 'react';
-import { useOS } from '../../context/OSContext';
+import { useWindowStore } from '../../store/windowManager';
 
 interface StartMenuProps {
   onClose: () => void;
 }
 
 export function StartMenu({ onClose }: StartMenuProps) {
-  const { windowManager } = useOS();
+  const { openWindow } = useWindowStore();
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -26,7 +26,7 @@ export function StartMenu({ onClose }: StartMenuProps) {
       label: 'Programs',
       icon: '📁',
       action: () => {
-        windowManager.openWindow('FileExplorer', 'Programs', { icon: '📁' });
+        openWindow('FileExplorer', 'Programs', { icon: '📁' });
         onClose();
       },
     },
@@ -35,7 +35,7 @@ export function StartMenu({ onClose }: StartMenuProps) {
       label: 'Documents',
       icon: '📄',
       action: () => {
-        windowManager.openWindow('FileExplorer', 'My Documents', {
+        openWindow('FileExplorer', 'My Documents', {
           icon: '📄',
         });
         onClose();
@@ -46,7 +46,7 @@ export function StartMenu({ onClose }: StartMenuProps) {
       label: 'Settings',
       icon: '⚙️',
       action: () => {
-        windowManager.openWindow('Settings', 'Settings', { icon: '⚙️' });
+        openWindow('Settings', 'Settings', { icon: '⚙️' });
         onClose();
       },
     },
@@ -55,7 +55,7 @@ export function StartMenu({ onClose }: StartMenuProps) {
       label: 'Help',
       icon: '❓',
       action: () => {
-        windowManager.openWindow('Help', 'Help', { icon: '❓' });
+        openWindow('Help', 'Help', { icon: '❓' });
         onClose();
       },
     },

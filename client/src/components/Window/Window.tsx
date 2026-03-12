@@ -6,7 +6,7 @@ import {
   type ReactNode,
 } from 'react';
 import type { WindowState } from '../../types';
-import { useOS } from '../../context/OSContext';
+import { useWindowStore } from '../../store/windowManager';
 
 type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 
@@ -16,7 +16,15 @@ interface WindowProps {
 }
 
 export function Window({ window: win, children }: WindowProps) {
-  const { windowManager } = useOS();
+  const focusWindow = useWindowStore((state) => state.focusWindow);
+  const moveWindow = useWindowStore((state) => state.moveWindow);
+  const moveAndResizeWindow = useWindowStore(
+    (state) => state.moveAndResizeWindow,
+  );
+  const minimizeWindow = useWindowStore((state) => state.minimizeWindow);
+  const maximizeWindow = useWindowStore((state) => state.maximizeWindow);
+  const closeWindow = useWindowStore((state) => state.closeWindow);
+
   const windowRef = useRef<HTMLDivElement>(null);
   const dragOffset = useRef({ x: 0, y: 0 });
   const resizeStart = useRef({
@@ -40,7 +48,7 @@ export function Window({ window: win, children }: WindowProps) {
     (e: MouseEvent) => {
       if (win.isMaximized) return;
       e.preventDefault();
-      windowManager.focusWindow(win.id);
+      focusWindow(win.id);
 
       dragOffset.current = { x: e.clientX - win.x, y: e.clientY - win.y };
       setDragPos({ x: win.x, y: win.y });
@@ -59,13 +67,13 @@ export function Window({ window: win, children }: WindowProps) {
         const finalX = e.clientX - dragOffset.current.x;
         const finalY = e.clientY - dragOffset.current.y;
         setDragPos(null);
-        windowManager.moveWindow(win.id, finalX, finalY);
+        moveWindow(win.id, finalX, finalY);
       };
 
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
     },
-    [win.id, win.x, win.y, win.isMaximized, windowManager],
+    [win.id, win.x, win.y, win.isMaximized, focusWindow, moveWindow],
   );
 
   const handleResizeMouseDown = useCallback(
@@ -143,7 +151,7 @@ export function Window({ window: win, children }: WindowProps) {
 
         setResizeState((state) => {
           if (state) {
-            windowManager.moveAndResizeWindow(
+            moveAndResizeWindow(
               win.id,
               state.x,
               state.y,
@@ -167,7 +175,7 @@ export function Window({ window: win, children }: WindowProps) {
       win.minWidth,
       win.minHeight,
       win.isMaximized,
-      windowManager,
+      moveAndResizeWindow,
     ],
   );
 
@@ -199,7 +207,7 @@ export function Window({ window: win, children }: WindowProps) {
       ref={windowRef}
       className="border-outset bg-win-gray absolute flex flex-col border-2 shadow-[1px_1px_0_0_#000]"
       style={windowStyle}
-      onMouseDown={() => windowManager.focusWindow(win.id)}
+      onMouseDown={() => focusWindow(win.id)}
     >
       <div
         className="title-bar-gradient flex h-[22px] cursor-default items-center px-[3px] py-0.5 text-xs font-bold text-white select-none"
@@ -210,21 +218,21 @@ export function Window({ window: win, children }: WindowProps) {
         <div className="flex gap-0.5">
           <button
             className="border-outset bg-win-gray active:border-inset flex h-3.5 w-4 cursor-pointer items-center justify-center border p-0 text-[10px] leading-none"
-            onClick={() => windowManager.minimizeWindow(win.id)}
+            onClick={() => minimizeWindow(win.id)}
             aria-label="Minimize"
           >
             _
           </button>
           <button
             className="border-outset bg-win-gray active:border-inset flex h-3.5 w-4 cursor-pointer items-center justify-center border p-0 text-[10px] leading-none"
-            onClick={() => windowManager.maximizeWindow(win.id)}
+            onClick={() => maximizeWindow(win.id)}
             aria-label="Maximize"
           >
             {win.isMaximized ? '❐' : '□'}
           </button>
           <button
             className="border-outset bg-win-gray active:border-inset flex h-3.5 w-4 cursor-pointer items-center justify-center border p-0 text-sm leading-none font-bold"
-            onClick={() => windowManager.closeWindow(win.id)}
+            onClick={() => closeWindow(win.id)}
             aria-label="Close"
           >
             ×

@@ -1,13 +1,24 @@
-import { useState, useCallback, useEffect } from 'react';
-import { useOS } from '../../context/OSContext';
+import { useState, useCallback, useRef } from 'react';
+import { useFileSystemStore } from '../../store/fileSystem';
 
 interface NotepadProps {
   filePath?: string;
 }
 
 export function Notepad({ filePath: initialFilePath }: NotepadProps) {
-  const { fileSystem } = useOS();
-  const [content, setContent] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const readFile = useFileSystemStore((state) => state.readFile);
+  const writeFile = useFileSystemStore((state) => state.writeFile);
+  const getChildren = useFileSystemStore((state) => state.getChildren);
+
+  const [content, setContent] = useState(() => {
+    if (initialFilePath) {
+      return readFile(initialFilePath) ?? '';
+    }
+    return '';
+  });
+
   const [filePath, setFilePath] = useState(initialFilePath || '');
   const [isModified, setIsModified] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -15,18 +26,6 @@ export function Notepad({ filePath: initialFilePath }: NotepadProps) {
   const [dialogPath, setDialogPath] = useState('C:/My Documents');
   const [dialogFileName, setDialogFileName] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
-
-  // Load file content on mount or when filePath changes
-  useEffect(() => {
-    if (initialFilePath) {
-      const fileContent = fileSystem.readFile(initialFilePath);
-      if (fileContent !== null) {
-        setContent(fileContent);
-        setFilePath(initialFilePath);
-        setIsModified(false);
-      }
-    }
-  }, [initialFilePath, fileSystem]);
 
   const handleContentChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -38,7 +37,9 @@ export function Notepad({ filePath: initialFilePath }: NotepadProps) {
 
   const handleNew = useCallback(() => {
     if (isModified) {
-      if (!confirm('You have unsaved changes. Create new file anyway?')) {
+      if (
+        !window.confirm('You have unsaved changes. Create new file anyway?')
+      ) {
         return;
       }
     }
@@ -56,21 +57,20 @@ export function Notepad({ filePath: initialFilePath }: NotepadProps) {
 
   const handleSave = useCallback(() => {
     if (!filePath) {
-      // No file path, show Save As dialog
       setDialogPath('C:/My Documents');
       setDialogFileName('untitled.txt');
       setShowSaveDialog(true);
       return;
     }
 
-    const success = fileSystem.writeFile(filePath, content);
+    const success = writeFile(filePath, content);
     if (success) {
       setIsModified(false);
       setStatusMessage(`Saved to ${filePath}`);
     } else {
       setStatusMessage('Error: Could not save file');
     }
-  }, [filePath, content, fileSystem]);
+  }, [filePath, content, writeFile]);
 
   const handleSaveAs = useCallback(() => {
     const fileName = filePath
@@ -91,7 +91,7 @@ export function Notepad({ filePath: initialFilePath }: NotepadProps) {
     }
 
     const newPath = `${dialogPath}/${dialogFileName}`;
-    const success = fileSystem.writeFile(newPath, content);
+    const success = writeFile(newPath, content);
     if (success) {
       setFilePath(newPath);
       setIsModified(false);
@@ -100,7 +100,7 @@ export function Notepad({ filePath: initialFilePath }: NotepadProps) {
     } else {
       setStatusMessage('Error: Could not save file');
     }
-  }, [dialogPath, dialogFileName, content, fileSystem]);
+  }, [dialogPath, dialogFileName, content, writeFile]);
 
   const handleOpenDialogConfirm = useCallback(() => {
     if (!dialogFileName.trim()) {
@@ -109,7 +109,7 @@ export function Notepad({ filePath: initialFilePath }: NotepadProps) {
     }
 
     const openPath = `${dialogPath}/${dialogFileName}`;
-    const fileContent = fileSystem.readFile(openPath);
+    const fileContent = readFile(openPath);
     if (fileContent !== null) {
       setContent(fileContent);
       setFilePath(openPath);
@@ -119,9 +119,13 @@ export function Notepad({ filePath: initialFilePath }: NotepadProps) {
     } else {
       setStatusMessage('Error: Could not open file');
     }
-  }, [dialogPath, dialogFileName, fileSystem]);
+  }, [dialogPath, dialogFileName, readFile]);
 
-  const dialogItems = fileSystem.getChildren(dialogPath);
+  const handleSelectAll = useCallback(() => {
+    textareaRef.current?.select();
+  }, []);
+
+  const dialogItems = getChildren(dialogPath);
   const textFiles = dialogItems.filter(
     (item) => item.type === 'file' && /\.(txt|bat|sys)$/i.test(item.name),
   );
@@ -129,7 +133,6 @@ export function Notepad({ filePath: initialFilePath }: NotepadProps) {
 
   return (
     <div className="flex h-full flex-col bg-white">
-      {/* Menu bar */}
       <div className="bg-win-gray flex border-b border-gray-400">
         <div className="group relative">
           <button className="px-2 py-0.5 text-xs hover:bg-blue-800 hover:text-white">
@@ -169,7 +172,7 @@ export function Notepad({ filePath: initialFilePath }: NotepadProps) {
           <div className="border-outset bg-win-gray absolute top-full left-0 z-50 hidden min-w-32 border shadow-md group-hover:block">
             <button
               className="block w-full px-4 py-1 text-left text-xs hover:bg-blue-800 hover:text-white"
-              onClick={() => document.execCommand('selectAll')}
+              onClick={handleSelectAll}
             >
               Select All
             </button>
@@ -177,8 +180,8 @@ export function Notepad({ filePath: initialFilePath }: NotepadProps) {
         </div>
       </div>
 
-      {/* Text area */}
       <textarea
+        ref={textareaRef}
         className="flex-1 resize-none border-none p-2 font-mono text-xs outline-none"
         value={content}
         onChange={handleContentChange}
@@ -186,64 +189,57 @@ export function Notepad({ filePath: initialFilePath }: NotepadProps) {
         spellCheck={false}
       />
 
-      {/* Status bar */}
       <div className="border-inset bg-win-gray flex h-5 items-center justify-between border-t px-2 text-xs">
-        <span>
+        <span className="max-w-[70%] truncate">
           {statusMessage || filePath || 'Untitled'}
           {isModified ? ' *' : ''}
         </span>
-        <span>Ln 1, Col 1</span>
+        <span className="shrink-0">Ln 1, Col 1</span>
       </div>
 
-      {/* Save Dialog */}
       {showSaveDialog && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+        <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/30">
           <div className="border-outset bg-win-gray w-80 border-2 shadow-lg">
             <div className="title-bar-gradient px-2 py-1 text-xs font-bold text-white">
               Save As
             </div>
             <div className="p-3">
-              <div className="mb-2 text-xs">Save in:</div>
+              <div className="mb-1 text-xs">Save in:</div>
               <select
-                className="border-inset mb-3 w-full border bg-white p-1 text-xs"
+                className="border-inset mb-3 w-full border bg-white p-0.5 text-xs outline-none"
                 value={dialogPath}
                 onChange={(e) => setDialogPath(e.target.value)}
               >
                 <option value="C:">Local Disk (C:)</option>
                 <option value="C:/My Documents">My Documents</option>
-                <option value="C:/Program Files">Program Files</option>
                 <option value="C:/Windows">Windows</option>
               </select>
-
               <div className="border-inset mb-3 h-24 overflow-auto border bg-white">
                 {folders.map((folder) => (
                   <div
                     key={folder.id}
-                    className="cursor-pointer px-2 py-0.5 text-xs hover:bg-blue-100"
+                    className="hover:bg-win-blue cursor-pointer px-2 py-0.5 text-xs hover:text-white"
                     onDoubleClick={() => setDialogPath(folder.id)}
                   >
-                    {folder.icon} {folder.name}
+                    📁 {folder.name}
                   </div>
                 ))}
               </div>
-
-              <div className="mb-2 text-xs">File name:</div>
+              <div className="mb-1 text-xs">File name:</div>
               <input
-                type="text"
-                className="border-inset mb-3 w-full border bg-white p-1 text-xs"
+                className="border-inset mb-3 w-full border bg-white p-1 text-xs outline-none"
                 value={dialogFileName}
                 onChange={(e) => setDialogFileName(e.target.value)}
               />
-
               <div className="flex justify-end gap-2">
                 <button
-                  className="border-outset bg-win-gray active:border-inset w-16 border px-2 py-1 text-xs"
+                  className="border-outset bg-win-gray active:border-inset w-16 border text-xs"
                   onClick={handleSaveDialogConfirm}
                 >
                   Save
                 </button>
                 <button
-                  className="border-outset bg-win-gray active:border-inset w-16 border px-2 py-1 text-xs"
+                  className="border-outset bg-win-gray active:border-inset w-16 border text-xs"
                   onClick={() => setShowSaveDialog(false)}
                 >
                   Cancel
@@ -254,17 +250,16 @@ export function Notepad({ filePath: initialFilePath }: NotepadProps) {
         </div>
       )}
 
-      {/* Open Dialog */}
       {showOpenDialog && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+        <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/30">
           <div className="border-outset bg-win-gray w-80 border-2 shadow-lg">
             <div className="title-bar-gradient px-2 py-1 text-xs font-bold text-white">
               Open
             </div>
             <div className="p-3">
-              <div className="mb-2 text-xs">Look in:</div>
+              <div className="mb-1 text-xs">Look in:</div>
               <select
-                className="border-inset mb-3 w-full border bg-white p-1 text-xs"
+                className="border-inset mb-3 w-full border bg-white p-0.5 text-xs outline-none"
                 value={dialogPath}
                 onChange={(e) => {
                   setDialogPath(e.target.value);
@@ -273,59 +268,43 @@ export function Notepad({ filePath: initialFilePath }: NotepadProps) {
               >
                 <option value="C:">Local Disk (C:)</option>
                 <option value="C:/My Documents">My Documents</option>
-                <option value="C:/Program Files">Program Files</option>
-                <option value="C:/Windows">Windows</option>
               </select>
-
               <div className="border-inset mb-3 h-32 overflow-auto border bg-white">
-                {folders.map((folder) => (
+                {folders.map((f) => (
                   <div
-                    key={folder.id}
-                    className="cursor-pointer px-2 py-0.5 text-xs hover:bg-blue-100"
-                    onDoubleClick={() => {
-                      setDialogPath(folder.id);
-                      setDialogFileName('');
-                    }}
+                    key={f.id}
+                    className="hover:bg-win-blue cursor-pointer px-2 py-0.5 text-xs hover:text-white"
+                    onDoubleClick={() => setDialogPath(f.id)}
                   >
-                    {folder.icon} {folder.name}
+                    📁 {f.name}
                   </div>
                 ))}
-                {textFiles.map((file) => (
+                {textFiles.map((f) => (
                   <div
-                    key={file.id}
-                    className={`cursor-pointer px-2 py-0.5 text-xs ${
-                      dialogFileName === file.name
-                        ? 'bg-win-blue text-white'
-                        : 'hover:bg-blue-100'
-                    }`}
-                    onClick={() => setDialogFileName(file.name)}
-                    onDoubleClick={() => {
-                      setDialogFileName(file.name);
-                      handleOpenDialogConfirm();
-                    }}
+                    key={f.id}
+                    className={`cursor-pointer px-2 py-0.5 text-xs ${dialogFileName === f.name ? 'bg-win-blue text-white' : 'hover:bg-blue-100'}`}
+                    onClick={() => setDialogFileName(f.name)}
+                    onDoubleClick={handleOpenDialogConfirm}
                   >
-                    {file.icon} {file.name}
+                    📄 {f.name}
                   </div>
                 ))}
               </div>
-
-              <div className="mb-2 text-xs">File name:</div>
+              <div className="mb-1 text-xs">File name:</div>
               <input
-                type="text"
-                className="border-inset mb-3 w-full border bg-white p-1 text-xs"
+                className="border-inset mb-3 w-full border bg-white p-1 text-xs outline-none"
                 value={dialogFileName}
                 onChange={(e) => setDialogFileName(e.target.value)}
               />
-
               <div className="flex justify-end gap-2">
                 <button
-                  className="border-outset bg-win-gray active:border-inset w-16 border px-2 py-1 text-xs"
+                  className="border-outset bg-win-gray active:border-inset w-16 border text-xs"
                   onClick={handleOpenDialogConfirm}
                 >
                   Open
                 </button>
                 <button
-                  className="border-outset bg-win-gray active:border-inset w-16 border px-2 py-1 text-xs"
+                  className="border-outset bg-win-gray active:border-inset w-16 border text-xs"
                   onClick={() => setShowOpenDialog(false)}
                 >
                   Cancel

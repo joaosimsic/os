@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, type MouseEvent } from 'react';
-import { useOS } from '../../context/OSContext';
+import { useWindowStore } from '../../store/windowManager';
 import { Window } from '../Window';
 import { Taskbar } from '../Taskbar';
 import { DesktopIcon, getGridPosition, snapToGrid } from '../DesktopIcon';
@@ -64,7 +64,6 @@ const defaultIcons: DesktopIconState[] = [
   },
 ];
 
-// Icon dimensions for hit testing
 const ICON_WIDTH = 64;
 const ICON_HEIGHT = 70;
 const GRID_SIZE = 80;
@@ -82,7 +81,8 @@ function rectsIntersect(
 }
 
 export function Desktop() {
-  const { windowManager } = useOS();
+  const { windows, openWindow } = useWindowStore();
+
   const [icons, setIcons] = useState<DesktopIconState[]>(defaultIcons);
   const [selectedIconIds, setSelectedIconIds] = useState<Set<string>>(
     new Set(),
@@ -102,20 +102,18 @@ export function Desktop() {
 
   const handleIconDoubleClick = useCallback(
     (icon: DesktopIconState) => {
-      windowManager.openWindow(icon.component, icon.title, { icon: icon.icon });
+      openWindow(icon.component, icon.title, { icon: icon.icon });
     },
-    [windowManager],
+    [openWindow],
   );
 
   const handleDesktopMouseDown = useCallback(
     (e: MouseEvent) => {
-      // Only start selection if clicking directly on the desktop (not on icons)
       if (e.target !== desktopRef.current) return;
 
       const startX = e.clientX;
       const startY = e.clientY;
 
-      // Clear selection if not holding Ctrl
       if (!e.ctrlKey) {
         setSelectedIconIds(new Set());
       }
@@ -138,7 +136,6 @@ export function Desktop() {
             : null,
         );
 
-        // Calculate selection rectangle bounds
         const left = Math.min(startX, e.clientX);
         const top = Math.min(startY, e.clientY);
         const width = Math.abs(e.clientX - startX);
@@ -146,7 +143,6 @@ export function Desktop() {
 
         const selRect = { x: left, y: top, width, height };
 
-        // Find icons that intersect with selection rectangle
         const newSelected = new Set<string>();
         icons.forEach((icon) => {
           const pos = getGridPosition(icon.gridCol, icon.gridRow);
@@ -179,13 +175,11 @@ export function Desktop() {
 
   const handleIconSelect = useCallback((id: string, ctrlKey: boolean) => {
     setSelectedIconIds((prev) => {
-      // If clicking on an already selected icon without Ctrl, keep selection for dragging
       if (prev.has(id) && !ctrlKey) {
         return prev;
       }
 
       if (ctrlKey) {
-        // Toggle selection with Ctrl
         const next = new Set(prev);
         if (next.has(id)) {
           next.delete(id);
@@ -194,7 +188,6 @@ export function Desktop() {
         }
         return next;
       } else {
-        // Single selection without Ctrl
         return new Set([id]);
       }
     });
@@ -204,7 +197,6 @@ export function Desktop() {
     const startX = e.clientX;
     const startY = e.clientY;
 
-    // Ensure the dragged icon is selected
     setSelectedIconIds((prev) => {
       if (prev.has(id)) {
         selectedAtDragStart.current = prev;
@@ -240,7 +232,6 @@ export function Desktop() {
       const offsetX = e.clientX - startX;
       const offsetY = e.clientY - startY;
 
-      // Move all selected icons
       setIcons((prev) =>
         prev.map((icon) => {
           if (!selectedAtDragStart.current.has(icon.id)) {
@@ -271,7 +262,6 @@ export function Desktop() {
     document.addEventListener('mouseup', handleMouseUp);
   }, []);
 
-  // Calculate selection rectangle for rendering
   const selectionStyle = selectionRect
     ? {
         left: Math.min(selectionRect.startX, selectionRect.currentX),
@@ -309,7 +299,6 @@ export function Desktop() {
         );
       })}
 
-      {/* Selection rectangle */}
       {selectionStyle && (
         <div
           className="pointer-events-none absolute border border-white/70 bg-white/20"
@@ -317,7 +306,7 @@ export function Desktop() {
         />
       )}
 
-      {windowManager.windows.map((win) => (
+      {windows.map((win) => (
         <Window key={win.id} window={win}>
           {getAppComponent(win.component, win.props)}
         </Window>

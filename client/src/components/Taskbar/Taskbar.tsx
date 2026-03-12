@@ -1,12 +1,21 @@
-import { useState } from 'react';
-import { useOS } from '../../context/OSContext';
+import { useState, useEffect } from 'react';
+import { useWindowStore } from '../../store/windowManager';
 import { StartMenu } from '../StartMenu';
 
 export function Taskbar() {
-  const { windowManager } = useOS();
   const [startMenuOpen, setStartMenuOpen] = useState(false);
+  const [time, setTime] = useState(new Date());
 
-  const currentTime = new Date().toLocaleTimeString([], {
+  const windows = useWindowStore((state) => state.windows);
+  const focusWindow = useWindowStore((state) => state.focusWindow);
+  const minimizeWindow = useWindowStore((state) => state.minimizeWindow);
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const currentTime = time.toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -25,8 +34,8 @@ export function Taskbar() {
 
       {startMenuOpen && <StartMenu onClose={() => setStartMenuOpen(false)} />}
 
-      <div className="ml-1 flex flex-1 gap-0.5 h-[90%] overflow-x-auto">
-        {windowManager.windows.map((win) => (
+      <div className="ml-1 flex h-[90%] flex-1 gap-0.5 overflow-x-auto">
+        {windows.map((win) => (
           <button
             key={win.id}
             className={`bg-win-gray flex h-full max-w-[180px] min-w-[120px] cursor-pointer items-center gap-1 overflow-hidden border-2 px-1.5 py-0.5 text-[11px] ${
@@ -36,9 +45,9 @@ export function Taskbar() {
             }`}
             onClick={() => {
               if (win.isMinimized) {
-                windowManager.focusWindow(win.id);
+                focusWindow(win.id);
               } else {
-                windowManager.minimizeWindow(win.id);
+                minimizeWindow(win.id);
               }
             }}
           >

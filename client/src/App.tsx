@@ -1,5 +1,4 @@
 import { useState, useCallback } from 'react';
-import { OSProvider } from './context/OSContext';
 import { Desktop } from './components/Desktop';
 import { BootScreen } from './components/BootScreen';
 
@@ -11,13 +10,13 @@ function App() {
   }, []);
 
   return (
-    <OSProvider>
+    <>
       {isBooting ? (
         <BootScreen onBootComplete={handleBootComplete} />
       ) : (
         <Desktop />
       )}
-    </OSProvider>
+    </>
   );
 }
 

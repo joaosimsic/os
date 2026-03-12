@@ -1,120 +1,134 @@
-import { useState, useCallback } from 'react';
+import { create } from 'zustand';
 import type { WindowState } from '../types';
 
-let windowIdCounter = 0;
-let topZIndex = 1;
+interface WindowStore {
+  windows: WindowState[];
+  windowIdCounter: number;
+  topZIndex: number;
+  openWindow: (
+    component: string,
+    title: string,
+    options?: Partial<Omit<WindowState, 'id' | 'component' | 'zIndex'>>,
+  ) => string;
+  closeWindow: (id: string) => void;
+  focusWindow: (id: string) => void;
+  minimizeWindow: (id: string) => void;
+  maximizeWindow: (id: string) => void;
+  moveWindow: (id: string, x: number, y: number) => void;
+  resizeWindow: (id: string, width: number, height: number) => void;
+  moveAndResizeWindow: (
+    id: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+  ) => void;
+}
 
-export function useWindowManager() {
-  const [windows, setWindows] = useState<WindowState[]>([]);
+export const useWindowStore = create<WindowStore>((set) => ({
+  windows: [],
+  windowIdCounter: 0,
+  topZIndex: 1,
 
-  const openWindow = useCallback(
-    (
-      component: string,
-      title: string,
-      options?: Partial<Omit<WindowState, 'id' | 'component' | 'zIndex'>>,
-    ) => {
-      const id = `window-${++windowIdCounter}`;
+  openWindow: (component, title, options) => {
+    let id = '';
+    set((state) => {
+      const nextCounter = state.windowIdCounter + 1;
+      const nextZIndex = state.topZIndex + 1;
+      id = `window-${nextCounter}`;
+
       const newWindow: WindowState = {
         id,
         title,
         component,
-        x: 50 + (windowIdCounter % 10) * 30,
-        y: 50 + (windowIdCounter % 10) * 30,
+        x: 50 + (nextCounter % 10) * 30,
+        y: 50 + (nextCounter % 10) * 30,
         width: options?.width ?? 800,
         height: options?.height ?? 650,
         minWidth: options?.minWidth ?? 200,
         minHeight: options?.minHeight ?? 150,
         isMinimized: false,
         isMaximized: false,
-        zIndex: ++topZIndex,
+        zIndex: nextZIndex,
         icon: options?.icon,
         props: options?.props,
       };
-      setWindows((prev) => [...prev, newWindow]);
-      return id;
-    },
-    [],
-  );
 
-  const closeWindow = useCallback((id: string) => {
-    setWindows((prev) => prev.filter((w) => w.id !== id));
-  }, []);
+      return {
+        windows: [...state.windows, newWindow],
+        windowIdCounter: nextCounter,
+        topZIndex: nextZIndex,
+      };
+    });
+    return id;
+  },
 
-  const focusWindow = useCallback((id: string) => {
-    setWindows((prev) =>
-      prev.map((w) =>
-        w.id === id ? { ...w, zIndex: ++topZIndex, isMinimized: false } : w,
+  closeWindow: (id) =>
+    set((state) => ({
+      windows: state.windows.filter((w) => w.id !== id),
+    })),
+
+  focusWindow: (id) =>
+    set((state) => {
+      const nextZIndex = state.topZIndex + 1;
+      return {
+        topZIndex: nextZIndex,
+        windows: state.windows.map((w) =>
+          w.id === id ? { ...w, zIndex: nextZIndex, isMinimized: false } : w,
+        ),
+      };
+    }),
+
+  minimizeWindow: (id) =>
+    set((state) => ({
+      windows: state.windows.map((w) =>
+        w.id === id ? { ...w, isMinimized: true } : w,
       ),
-    );
-  }, []);
+    })),
 
-  const minimizeWindow = useCallback((id: string) => {
-    setWindows((prev) =>
-      prev.map((w) => (w.id === id ? { ...w, isMinimized: true } : w)),
-    );
-  }, []);
+  maximizeWindow: (id) =>
+    set((state) => {
+      const nextZIndex = state.topZIndex + 1;
+      return {
+        topZIndex: nextZIndex,
+        windows: state.windows.map((w) =>
+          w.id === id
+            ? { ...w, isMaximized: !w.isMaximized, zIndex: nextZIndex }
+            : w,
+        ),
+      };
+    }),
 
-  const maximizeWindow = useCallback((id: string) => {
-    setWindows((prev) =>
-      prev.map((w) =>
+  moveWindow: (id, x, y) =>
+    set((state) => ({
+      windows: state.windows.map((w) => (w.id === id ? { ...w, x, y } : w)),
+    })),
+
+  resizeWindow: (id, width, height) =>
+    set((state) => ({
+      windows: state.windows.map((w) =>
         w.id === id
-          ? { ...w, isMaximized: !w.isMaximized, zIndex: ++topZIndex }
+          ? {
+              ...w,
+              width: Math.max(width, w.minWidth ?? 200),
+              height: Math.max(height, w.minHeight ?? 150),
+            }
           : w,
       ),
-    );
-  }, []);
+    })),
 
-  const moveWindow = useCallback((id: string, x: number, y: number) => {
-    setWindows((prev) => prev.map((w) => (w.id === id ? { ...w, x, y } : w)));
-  }, []);
-
-  const resizeWindow = useCallback(
-    (id: string, width: number, height: number) => {
-      setWindows((prev) =>
-        prev.map((w) =>
-          w.id === id
-            ? {
-                ...w,
-                width: Math.max(width, w.minWidth ?? 200),
-                height: Math.max(height, w.minHeight ?? 150),
-              }
-            : w,
-        ),
-      );
-    },
-    [],
-  );
-
-  const moveAndResizeWindow = useCallback(
-    (id: string, x: number, y: number, width: number, height: number) => {
-      setWindows((prev) =>
-        prev.map((w) =>
-          w.id === id
-            ? {
-                ...w,
-                x,
-                y,
-                width: Math.max(width, w.minWidth ?? 200),
-                height: Math.max(height, w.minHeight ?? 150),
-              }
-            : w,
-        ),
-      );
-    },
-    [],
-  );
-
-  return {
-    windows,
-    openWindow,
-    closeWindow,
-    focusWindow,
-    minimizeWindow,
-    maximizeWindow,
-    moveWindow,
-    resizeWindow,
-    moveAndResizeWindow,
-  };
-}
-
-export type WindowManager = ReturnType<typeof useWindowManager>;
+  moveAndResizeWindow: (id, x, y, width, height) =>
+    set((state) => ({
+      windows: state.windows.map((w) =>
+        w.id === id
+          ? {
+              ...w,
+              x,
+              y,
+              width: Math.max(width, w.minWidth ?? 200),
+              height: Math.max(height, w.minHeight ?? 150),
+            }
+          : w,
+      ),
+    })),
+}));

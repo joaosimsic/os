@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import { useOS } from '../../context/OSContext';
+import { useFileSystemStore } from '../../store/fileSystem';
+import { useWindowStore } from '../../store/windowManager';
 import type { FileSystemNode } from '../../types';
 
 const sidebarItems = [
@@ -22,14 +23,17 @@ interface FileExplorerProps {
 }
 
 export function FileExplorer({ initialPath = 'C:' }: FileExplorerProps) {
-  const { fileSystem, windowManager } = useOS();
+  // Zustand Stores
+  const { getNode, getChildren } = useFileSystemStore();
+  const { openWindow } = useWindowStore();
+
   const [currentPath, setCurrentPath] = useState(initialPath);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [history, setHistory] = useState<string[]>([initialPath]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
-  const currentFolder = fileSystem.getNode(currentPath);
-  const items = fileSystem.getChildren(currentPath);
+  const currentFolder = getNode(currentPath);
+  const items = getChildren(currentPath);
 
   const navigateTo = useCallback(
     (path: string) => {
@@ -58,37 +62,36 @@ export function FileExplorer({ initialPath = 'C:' }: FileExplorerProps) {
   }, [history, historyIndex]);
 
   const goUp = useCallback(() => {
-    const node = fileSystem.getNode(currentPath);
+    const node = getNode(currentPath);
     if (node?.parentId) {
       navigateTo(node.parentId);
     }
-  }, [currentPath, fileSystem, navigateTo]);
+  }, [currentPath, getNode, navigateTo]);
 
   const handleItemDoubleClick = useCallback(
     (item: FileSystemNode) => {
       if (item.type === 'folder') {
         navigateTo(item.id);
       } else if (item.type === 'file') {
-        // Open text files with Notepad
         const ext = item.name.split('.').pop()?.toLowerCase();
         if (ext === 'txt' || ext === 'bat' || ext === 'sys') {
-          windowManager.openWindow('Notepad', item.name, {
+          openWindow('Notepad', item.name, {
             icon: '📝',
             props: { filePath: item.id },
           });
         }
       }
     },
-    [navigateTo, windowManager],
+    [navigateTo, openWindow],
   );
 
   const handleSidebarClick = useCallback(
     (id: string) => {
-      if (fileSystem.getNode(id)) {
+      if (getNode(id)) {
         navigateTo(id);
       }
     },
-    [fileSystem, navigateTo],
+    [getNode, navigateTo],
   );
 
   return (
@@ -151,7 +154,7 @@ export function FileExplorer({ initialPath = 'C:' }: FileExplorerProps) {
             </div>
           ) : (
             <div className="grid grid-cols-[repeat(auto-fill,minmax(80px,1fr))] gap-2">
-              {items.map((item) => (
+              {items.map((item: FileSystemNode) => (
                 <div
                   key={item.id}
                   className={`flex cursor-pointer flex-col items-center p-2 ${
@@ -184,9 +187,10 @@ export function FileExplorer({ initialPath = 'C:' }: FileExplorerProps) {
           <>
             <span className="mx-2">|</span>
             <span>
-              {items.find((i) => i.id === selectedItem)?.name}
-              {items.find((i) => i.id === selectedItem)?.size !== undefined &&
-                ` - ${formatSize(items.find((i) => i.id === selectedItem)?.size)}`}
+              {items.find((i: FileSystemNode) => i.id === selectedItem)?.name}
+              {items.find((i: FileSystemNode) => i.id === selectedItem)
+                ?.size !== undefined &&
+                ` - ${formatSize(items.find((i: FileSystemNode) => i.id === selectedItem)?.size)}`}
             </span>
           </>
         )}
