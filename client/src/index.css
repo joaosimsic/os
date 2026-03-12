@@ -104,3 +104,181 @@ button {
   background: repeating-conic-gradient(#c0c0c0 0% 25%, #ffffff 0% 50%) 50% / 2px
     2px;
 }
+
+/* Boot Screen Styles */
+.boot-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+/* BIOS Phase */
+.boot-bios {
+  background: #000;
+  color: #aaa;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  padding: 40px;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.bios-content {
+  width: 100%;
+  max-width: 800px;
+}
+
+.bios-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  color: #fff;
+}
+
+.bios-info {
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+.bios-messages {
+  line-height: 1.8;
+}
+
+.bios-message {
+  color: #fff;
+}
+
+.bios-cursor {
+  animation: bios-blink 0.5s infinite;
+}
+
+@keyframes bios-blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Logo Phase */
+.boot-logo {
+  background: #008080;
+}
+
+.logo-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.windows-flag {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transform: perspective(200px) rotateY(-10deg) skewY(-2deg);
+}
+
+.flag-row {
+  display: flex;
+  gap: 4px;
+}
+
+.flag-square {
+  width: 40px;
+  height: 40px;
+  animation: flag-wave 0.8s ease-in-out infinite alternate;
+}
+
+.flag-square:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.flag-row:nth-child(2) .flag-square:first-child {
+  animation-delay: 0.2s;
+}
+
+.flag-row:nth-child(2) .flag-square:nth-child(2) {
+  animation-delay: 0.3s;
+}
+
+@keyframes flag-wave {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-3px);
+  }
+}
+
+.flag-red {
+  background: linear-gradient(135deg, #ff0000 0%, #cc0000 100%);
+}
+
+.flag-green {
+  background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%);
+}
+
+.flag-blue {
+  background: linear-gradient(135deg, #0000ff 0%, #0000cc 100%);
+}
+
+.flag-yellow {
+  background: linear-gradient(135deg, #ffff00 0%, #cccc00 100%);
+}
+
+.windows-text {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: #fff;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.windows-title {
+  font-family: 'Times New Roman', serif;
+  font-size: 48px;
+  font-style: italic;
+  font-weight: bold;
+}
+
+.windows-version {
+  font-family: 'Arial', sans-serif;
+  font-size: 36px;
+  font-weight: bold;
+}
+
+.progress-container {
+  position: absolute;
+  bottom: 100px;
+  width: 300px;
+}
+
+.progress-bar {
+  height: 20px;
+  background: #000;
+  border: 2px solid;
+  border-color: #808080 #ffffff #ffffff #808080;
+  padding: 2px;
+}
+
+.progress-fill {
+  height: 100%;
+  display: flex;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.progress-block {
+  width: 12px;
+  height: 100%;
+  background: linear-gradient(180deg, #000080 0%, #1084d0 50%, #000080 100%);
+  flex-shrink: 0;
+}
