@@ -38,3 +38,16 @@ export interface StartMenuItem {
   action?: () => void;
   submenu?: StartMenuItem[];
 }
+
+// File System Types
+export interface FileSystemNode {
+  id: string;
+  name: string;
+  type: 'folder' | 'file';
+  icon: string;
+  parentId: string | null;
+  size?: number;
+  content?: string;
+  modified: Date;
+  created: Date;
+}

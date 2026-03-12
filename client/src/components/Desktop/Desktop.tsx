@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, type MouseEvent } from 'react';
 import { useOS } from '../../context/OSContext';
 import { Window } from '../Window';
 import { Taskbar } from '../Taskbar';
@@ -12,6 +12,21 @@ interface DesktopIconState {
   gridCol: number;
   gridRow: number;
   component: string;
+}
+
+interface SelectionRect {
+  startX: number;
+  startY: number;
+  currentX: number;
+  currentY: number;
+}
+
+interface DragState {
+  isDragging: boolean;
+  startX: number;
+  startY: number;
+  offsetX: number;
+  offsetY: number;
 }
 
 const defaultIcons: DesktopIconState[] = [
@@ -49,22 +64,41 @@ const defaultIcons: DesktopIconState[] = [
   },
 ];
 
+// Icon dimensions for hit testing
+const ICON_WIDTH = 64;
+const ICON_HEIGHT = 70;
+const GRID_SIZE = 80;
+
+function rectsIntersect(
+  r1: { x: number; y: number; width: number; height: number },
+  r2: { x: number; y: number; width: number; height: number },
+): boolean {
+  return !(
+    r1.x + r1.width < r2.x ||
+    r2.x + r2.width < r1.x ||
+    r1.y + r1.height < r2.y ||
+    r2.y + r2.height < r1.y
+  );
+}
+
 export function Desktop() {
   const { windowManager } = useOS();
   const [icons, setIcons] = useState<DesktopIconState[]>(defaultIcons);
-  const [selectedIconId, setSelectedIconId] = useState<string | null>(null);
-
-  const handleIconMove = useCallback((id: string, x: number, y: number) => {
-    const snapped = snapToGrid(x, y);
-    const gridCol = Math.round((snapped.x - 8) / 80);
-    const gridRow = Math.round((snapped.y - 8) / 80);
-
-    setIcons((prev) =>
-      prev.map((icon) =>
-        icon.id === id ? { ...icon, gridCol, gridRow } : icon,
-      ),
-    );
-  }, []);
+  const [selectedIconIds, setSelectedIconIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [selectionRect, setSelectionRect] = useState<SelectionRect | null>(
+    null,
+  );
+  const [dragState, setDragState] = useState<DragState>({
+    isDragging: false,
+    startX: 0,
+    startY: 0,
+    offsetX: 0,
+    offsetY: 0,
+  });
+  const desktopRef = useRef<HTMLDivElement>(null);
+  const selectedAtDragStart = useRef<Set<string>>(new Set());
 
   const handleIconDoubleClick = useCallback(
     (icon: DesktopIconState) => {
@@ -73,21 +107,189 @@ export function Desktop() {
     [windowManager],
   );
 
-  const handleDesktopClick = useCallback(() => {
-    setSelectedIconId(null);
+  const handleDesktopMouseDown = useCallback(
+    (e: MouseEvent) => {
+      // Only start selection if clicking directly on the desktop (not on icons)
+      if (e.target !== desktopRef.current) return;
+
+      const startX = e.clientX;
+      const startY = e.clientY;
+
+      // Clear selection if not holding Ctrl
+      if (!e.ctrlKey) {
+        setSelectedIconIds(new Set());
+      }
+
+      setSelectionRect({
+        startX,
+        startY,
+        currentX: startX,
+        currentY: startY,
+      });
+
+      const handleMouseMove = (e: globalThis.MouseEvent) => {
+        setSelectionRect((prev) =>
+          prev
+            ? {
+                ...prev,
+                currentX: e.clientX,
+                currentY: e.clientY,
+              }
+            : null,
+        );
+
+        // Calculate selection rectangle bounds
+        const left = Math.min(startX, e.clientX);
+        const top = Math.min(startY, e.clientY);
+        const width = Math.abs(e.clientX - startX);
+        const height = Math.abs(e.clientY - startY);
+
+        const selRect = { x: left, y: top, width, height };
+
+        // Find icons that intersect with selection rectangle
+        const newSelected = new Set<string>();
+        icons.forEach((icon) => {
+          const pos = getGridPosition(icon.gridCol, icon.gridRow);
+          const iconRect = {
+            x: pos.x,
+            y: pos.y,
+            width: ICON_WIDTH,
+            height: ICON_HEIGHT,
+          };
+
+          if (rectsIntersect(selRect, iconRect)) {
+            newSelected.add(icon.id);
+          }
+        });
+
+        setSelectedIconIds(newSelected);
+      };
+
+      const handleMouseUp = () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        setSelectionRect(null);
+      };
+
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    },
+    [icons],
+  );
+
+  const handleIconSelect = useCallback((id: string, ctrlKey: boolean) => {
+    setSelectedIconIds((prev) => {
+      // If clicking on an already selected icon without Ctrl, keep selection for dragging
+      if (prev.has(id) && !ctrlKey) {
+        return prev;
+      }
+
+      if (ctrlKey) {
+        // Toggle selection with Ctrl
+        const next = new Set(prev);
+        if (next.has(id)) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+        return next;
+      } else {
+        // Single selection without Ctrl
+        return new Set([id]);
+      }
+    });
   }, []);
 
-  const handleIconSelect = useCallback((id: string) => {
-    setSelectedIconId(id);
+  const handleIconDragStart = useCallback((id: string, e: MouseEvent) => {
+    const startX = e.clientX;
+    const startY = e.clientY;
+
+    // Ensure the dragged icon is selected
+    setSelectedIconIds((prev) => {
+      if (prev.has(id)) {
+        selectedAtDragStart.current = prev;
+        return prev;
+      }
+      const newSet = new Set([id]);
+      selectedAtDragStart.current = newSet;
+      return newSet;
+    });
+
+    setDragState({
+      isDragging: true,
+      startX,
+      startY,
+      offsetX: 0,
+      offsetY: 0,
+    });
+
+    const handleMouseMove = (e: globalThis.MouseEvent) => {
+      const offsetX = e.clientX - startX;
+      const offsetY = e.clientY - startY;
+      setDragState((prev) => ({
+        ...prev,
+        offsetX,
+        offsetY,
+      }));
+    };
+
+    const handleMouseUp = (e: globalThis.MouseEvent) => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+
+      const offsetX = e.clientX - startX;
+      const offsetY = e.clientY - startY;
+
+      // Move all selected icons
+      setIcons((prev) =>
+        prev.map((icon) => {
+          if (!selectedAtDragStart.current.has(icon.id)) {
+            return icon;
+          }
+
+          const pos = getGridPosition(icon.gridCol, icon.gridRow);
+          const newX = pos.x + offsetX;
+          const newY = pos.y + offsetY;
+          const snapped = snapToGrid(newX, newY);
+          const gridCol = Math.round((snapped.x - 8) / GRID_SIZE);
+          const gridRow = Math.round((snapped.y - 8) / GRID_SIZE);
+
+          return { ...icon, gridCol, gridRow };
+        }),
+      );
+
+      setDragState({
+        isDragging: false,
+        startX: 0,
+        startY: 0,
+        offsetX: 0,
+        offsetY: 0,
+      });
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
   }, []);
+
+  // Calculate selection rectangle for rendering
+  const selectionStyle = selectionRect
+    ? {
+        left: Math.min(selectionRect.startX, selectionRect.currentX),
+        top: Math.min(selectionRect.startY, selectionRect.currentY),
+        width: Math.abs(selectionRect.currentX - selectionRect.startX),
+        height: Math.abs(selectionRect.currentY - selectionRect.startY),
+      }
+    : null;
 
   return (
     <div
+      ref={desktopRef}
       className="bg-win-teal fixed inset-0 overflow-hidden pb-9 font-[inherit]"
-      onMouseDown={handleDesktopClick}
+      onMouseDown={handleDesktopMouseDown}
     >
       {icons.map((icon) => {
         const pos = getGridPosition(icon.gridCol, icon.gridRow);
+        const isSelected = selectedIconIds.has(icon.id);
         return (
           <DesktopIcon
             key={icon.id}
@@ -96,13 +298,24 @@ export function Desktop() {
             title={icon.title}
             x={pos.x}
             y={pos.y}
-            isSelected={selectedIconId === icon.id}
+            isSelected={isSelected}
+            isDragging={dragState.isDragging && isSelected}
+            dragOffsetX={dragState.offsetX}
+            dragOffsetY={dragState.offsetY}
             onSelect={handleIconSelect}
             onDoubleClick={() => handleIconDoubleClick(icon)}
-            onMove={(x, y) => handleIconMove(icon.id, x, y)}
+            onDragStart={handleIconDragStart}
           />
         );
       })}
+
+      {/* Selection rectangle */}
+      {selectionStyle && (
+        <div
+          className="pointer-events-none absolute border border-white/70 bg-white/20"
+          style={selectionStyle}
+        />
+      )}
 
       {windowManager.windows.map((win) => (
         <Window key={win.id} window={win}>

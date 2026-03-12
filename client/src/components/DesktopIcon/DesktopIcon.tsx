@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type MouseEvent } from 'react';
+import { useCallback, type MouseEvent } from 'react';
 
 // Grid configuration
 const GRID_SIZE = 80;
@@ -27,9 +27,12 @@ interface DesktopIconProps {
   x: number;
   y: number;
   isSelected: boolean;
-  onSelect: (id: string) => void;
+  isDragging?: boolean;
+  dragOffsetX?: number;
+  dragOffsetY?: number;
+  onSelect: (id: string, ctrlKey: boolean) => void;
   onDoubleClick: () => void;
-  onMove?: (x: number, y: number) => void;
+  onDragStart?: (id: string, e: MouseEvent) => void;
 }
 
 export function DesktopIcon({
@@ -39,56 +42,39 @@ export function DesktopIcon({
   x,
   y,
   isSelected,
+  isDragging = false,
+  dragOffsetX = 0,
+  dragOffsetY = 0,
   onSelect,
   onDoubleClick,
-  onMove,
+  onDragStart,
 }: DesktopIconProps) {
-  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
-  const dragOffset = useRef({ x: 0, y: 0 });
-
   const handleMouseDown = useCallback(
     (e: MouseEvent) => {
       e.stopPropagation();
-      onSelect(id);
 
-      if (!onMove) return;
-      e.preventDefault();
+      const ctrlKey = e.ctrlKey || e.metaKey;
+      onSelect(id, ctrlKey);
 
-      dragOffset.current = { x: e.clientX - x, y: e.clientY - y };
-      setDragPos({ x, y });
-
-      const handleMouseMove = (e: globalThis.MouseEvent) => {
-        setDragPos({
-          x: e.clientX - dragOffset.current.x,
-          y: e.clientY - dragOffset.current.y,
-        });
-      };
-
-      const handleMouseUp = (e: globalThis.MouseEvent) => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-
-        const rawX = e.clientX - dragOffset.current.x;
-        const rawY = e.clientY - dragOffset.current.y;
-        const snapped = snapToGrid(rawX, rawY);
-
-        setDragPos(null);
-        onMove(snapped.x, snapped.y);
-      };
-
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+      if (onDragStart) {
+        e.preventDefault();
+        onDragStart(id, e);
+      }
     },
-    [id, x, y, onMove, onSelect],
+    [id, onSelect, onDragStart],
   );
 
-  const currentX = dragPos?.x ?? x;
-  const currentY = dragPos?.y ?? y;
+  const currentX = isDragging ? x + dragOffsetX : x;
+  const currentY = isDragging ? y + dragOffsetY : y;
 
   return (
     <div
       className="absolute flex w-16 cursor-pointer flex-col items-center p-1 select-none"
-      style={{ left: currentX, top: currentY }}
+      style={{
+        left: currentX,
+        top: currentY,
+        zIndex: isDragging ? 1000 : 1,
+      }}
       onMouseDown={handleMouseDown}
       onDoubleClick={onDoubleClick}
     >

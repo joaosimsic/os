@@ -85,6 +85,25 @@ export function useWindowManager() {
     [],
   );
 
+  const moveAndResizeWindow = useCallback(
+    (id: string, x: number, y: number, width: number, height: number) => {
+      setWindows((prev) =>
+        prev.map((w) =>
+          w.id === id
+            ? {
+                ...w,
+                x,
+                y,
+                width: Math.max(width, w.minWidth ?? 200),
+                height: Math.max(height, w.minHeight ?? 150),
+              }
+            : w,
+        ),
+      );
+    },
+    [],
+  );
+
   return {
     windows,
     openWindow,
@@ -94,6 +113,7 @@ export function useWindowManager() {
     maximizeWindow,
     moveWindow,
     resizeWindow,
+    moveAndResizeWindow,
   };
 }
 

@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 import { Placeholder } from './Placeholder';
+import { FileExplorer } from './FileExplorer';
+import { Notepad } from './Notepad';
 
 // Registry of available applications
 // Add new apps here as they are created
@@ -7,10 +9,10 @@ const appRegistry: Record<
   string,
   (props: Record<string, unknown>) => ReactNode
 > = {
-  FileExplorer: (props) => <Placeholder title="File Explorer" {...props} />,
+  FileExplorer: (props) => <FileExplorer {...props} />,
   Settings: (props) => <Placeholder title="Settings" {...props} />,
   Help: (props) => <Placeholder title="Help" {...props} />,
-  Notepad: (props) => <Placeholder title="Notepad" {...props} />,
+  Notepad: (props) => <Notepad {...props} />,
 };
 
 export function getAppComponent(
