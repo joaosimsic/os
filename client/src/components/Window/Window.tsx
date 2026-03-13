@@ -217,21 +217,21 @@ export function Window({ window: win, children }: WindowProps) {
         <span className="flex-1 truncate">{win.title}</span>
         <div className="flex gap-0.5">
           <button
-            className="border-outset bg-win-gray active:border-inset flex h-3.5 w-4 cursor-pointer items-center justify-center border p-0 text-[10px] leading-none"
+            className="border-outset bg-win-gray active:border-inset flex h-3.5 w-4 cursor-pointer items-center justify-center border pb-1 text-[10px] leading-none text-black"
             onClick={() => minimizeWindow(win.id)}
             aria-label="Minimize"
           >
             _
           </button>
           <button
-            className="border-outset bg-win-gray active:border-inset flex h-3.5 w-4 cursor-pointer items-center justify-center border p-0 text-[10px] leading-none"
+            className="border-outset bg-win-gray active:border-inset flex h-3.5 w-4 cursor-pointer items-center justify-center border p-0 text-[10px] leading-none text-black"
             onClick={() => maximizeWindow(win.id)}
             aria-label="Maximize"
           >
             {win.isMaximized ? '❐' : '□'}
           </button>
           <button
-            className="border-outset bg-win-gray active:border-inset flex h-3.5 w-4 cursor-pointer items-center justify-center border p-0 text-sm leading-none font-bold"
+            className="border-outset bg-win-gray active:border-inset flex h-3.5 w-4 cursor-pointer items-center justify-center border p-0 text-sm leading-none font-bold text-black"
             onClick={() => closeWindow(win.id)}
             aria-label="Close"
           >
