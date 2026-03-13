@@ -1,0 +1,91 @@
+import { PrismaService } from '../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
+export declare class FilesRepository {
+    private readonly prisma;
+    constructor(prisma: PrismaService);
+    create(data: Prisma.FileUncheckedCreateInput): Promise<{
+        name: string;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        isHidden: boolean;
+        computerId: string;
+        folderId: string | null;
+        type: string;
+        content: string;
+        icon: string | null;
+        positionX: number;
+        positionY: number;
+    }>;
+    findById(id: string): Promise<{
+        name: string;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        isHidden: boolean;
+        computerId: string;
+        folderId: string | null;
+        type: string;
+        content: string;
+        icon: string | null;
+        positionX: number;
+        positionY: number;
+    } | null>;
+    findByComputer(computerId: string): Promise<{
+        name: string;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        isHidden: boolean;
+        computerId: string;
+        folderId: string | null;
+        type: string;
+        content: string;
+        icon: string | null;
+        positionX: number;
+        positionY: number;
+    }[]>;
+    findByFolder(folderId: string): Promise<{
+        name: string;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        isHidden: boolean;
+        computerId: string;
+        folderId: string | null;
+        type: string;
+        content: string;
+        icon: string | null;
+        positionX: number;
+        positionY: number;
+    }[]>;
+    update(id: string, data: Prisma.FileUpdateInput): Promise<{
+        name: string;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        isHidden: boolean;
+        computerId: string;
+        folderId: string | null;
+        type: string;
+        content: string;
+        icon: string | null;
+        positionX: number;
+        positionY: number;
+    }>;
+    delete(id: string): Promise<{
+        name: string;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        isHidden: boolean;
+        computerId: string;
+        folderId: string | null;
+        type: string;
+        content: string;
+        icon: string | null;
+        positionX: number;
+        positionY: number;
+    }>;
+    deleteByComputer(computerId: string): Promise<Prisma.BatchPayload>;
+}

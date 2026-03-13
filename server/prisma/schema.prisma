@@ -1,0 +1,114 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          Int        @id @default(autoincrement())
+  username    String     @unique
+  password    String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  computers   Computer[]
+}
+
+// The Life Capsule - a snapshot of someone's digital world
+model Computer {
+  id          String   @id @default(cuid())
+  ownerId     Int
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  
+  // Computer metadata
+  name        String   @default("My Computer")
+  description String?  // Optional internal description for the owner
+  
+  // Status
+  isPublished Boolean  @default(false) // Only published computers can be discovered
+  
+  // Stats (anonymous)
+  visitCount  Int      @default(0)
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  publishedAt DateTime?
+  
+  // Relations
+  files       File[]
+  folders     Folder[]
+  visits      Visit[]
+
+  @@index([isPublished])
+  @@index([visitCount])
+}
+
+// Folders organize files within a computer
+model Folder {
+  id         String   @id @default(cuid())
+  computerId String
+  computer   Computer @relation(fields: [computerId], references: [id], onDelete: Cascade)
+  
+  parentId   String?  // null = root level (Desktop)
+  parent     Folder?  @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children   Folder[] @relation("FolderHierarchy")
+  
+  name       String
+  icon       String?  // Custom icon identifier
+  isHidden   Boolean  @default(false) // Hidden folders for discovery depth
+  
+  // Position on desktop/parent
+  positionX  Int      @default(0)
+  positionY  Int      @default(0)
+  
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  files      File[]
+
+  @@index([computerId])
+  @@index([parentId])
+}
+
+// Files are the life fragments - notes, texts, images, etc.
+model File {
+  id         String   @id @default(cuid())
+  computerId String
+  computer   Computer @relation(fields: [computerId], references: [id], onDelete: Cascade)
+  
+  folderId   String?  // null = on desktop
+  folder     Folder?  @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  
+  name       String   // e.g., "diary.txt", "letter_never_sent.txt"
+  type       String   // "text", "image", "link", "note"
+  content    String   // Text content or URL for images/links
+  icon       String?  // Custom icon identifier
+  isHidden   Boolean  @default(false) // Hidden files for discovery depth
+  
+  // Position on desktop/folder
+  positionX  Int      @default(0)
+  positionY  Int      @default(0)
+  
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([computerId])
+  @@index([folderId])
+}
+
+// Track anonymous visits
+model Visit {
+visitorHash String   // Hashed identifier (IP + user agent or session)
+  computerId  String
+  computer    Computer @relation(fields: [computerId], references: [id], onDelete: Cascade)
+  visitedAt   DateTime @default(now())
+
+  @@id([visitorHash, computerId])
+  @@index([computerId])
+}

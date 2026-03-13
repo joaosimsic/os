@@ -1,8 +1,19 @@
 {
-  "name": "os",
-  "module": "index.ts",
-  "type": "module",
+  "name": "netroulette",
+  "version": "0.1.0",
   "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "./dev.sh",
+    "dev:server": "cd server && bun run start:dev",
+    "dev:client": "cd client && bun run dev",
+    "build": "cd server && bun run build && cd ../client && bun run build",
+    "build:server": "cd server && bun run build",
+    "build:client": "cd client && bun run build",
+    "prisma:migrate": "cd server && bun run prisma:migrate",
+    "prisma:generate": "cd server && bun run prisma:generate",
+    "prisma:studio": "cd server && bun run prisma:studio"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
