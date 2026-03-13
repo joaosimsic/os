@@ -80,7 +80,11 @@ function rectsIntersect(
   );
 }
 
-export function Desktop() {
+interface DesktopProps {
+  onShutdown: () => void;
+}
+
+export function Desktop({ onShutdown }: DesktopProps) {
   const { windows, openWindow } = useWindowStore();
 
   const [icons, setIcons] = useState<DesktopIconState[]>(defaultIcons);
@@ -312,7 +316,7 @@ export function Desktop() {
         </Window>
       ))}
 
-      <Taskbar />
+      <Taskbar onShutdown={onShutdown} />
     </div>
   );
 }

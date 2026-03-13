@@ -16,6 +16,10 @@ function App() {
     setPhase('desktop');
   }, []);
 
+  const handleShutdown = useCallback(() => {
+    setPhase('booting');
+  }, []);
+
   if (phase === 'login') {
     return <LoginScreen onLogin={handleLogin} />;
   }
@@ -24,7 +28,7 @@ function App() {
     return <BootScreen onBootComplete={handleBootComplete} />;
   }
 
-  return <Desktop />;
+  return <Desktop onShutdown={handleShutdown} />;
 }
 
 export default App;

@@ -2,7 +2,11 @@ import { useState, useEffect } from 'react';
 import { useWindowStore } from '../../store/windowManager';
 import { StartMenu } from '../StartMenu';
 
-export function Taskbar() {
+interface TaskbarProps {
+  onShutdown: () => void;
+}
+
+export function Taskbar({ onShutdown }: TaskbarProps) {
   const [startMenuOpen, setStartMenuOpen] = useState(false);
   const [time, setTime] = useState(new Date());
 
@@ -32,7 +36,12 @@ export function Taskbar() {
         <span className="text-base">Start</span>
       </button>
 
-      {startMenuOpen && <StartMenu onClose={() => setStartMenuOpen(false)} />}
+      {startMenuOpen && (
+        <StartMenu
+          onClose={() => setStartMenuOpen(false)}
+          onShutdown={onShutdown}
+        />
+      )}
 
       <div className="ml-1 flex h-[90%] flex-1 gap-0.5 overflow-x-auto">
         {windows.map((win) => (

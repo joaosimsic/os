@@ -3,9 +3,10 @@ import { useWindowStore } from '../../store/windowManager';
 
 interface StartMenuProps {
   onClose: () => void;
+  onShutdown: () => void;
 }
 
-export function StartMenu({ onClose }: StartMenuProps) {
+export function StartMenu({ onClose, onShutdown }: StartMenuProps) {
   const { openWindow } = useWindowStore();
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -83,7 +84,13 @@ export function StartMenu({ onClose }: StartMenuProps) {
           </button>
         ))}
         <div className="border-win-highlight bg-win-dark-gray mx-2 my-1 h-px border-b" />
-        <button className="hover:bg-win-blue flex w-full cursor-pointer items-center gap-2 border-none bg-transparent px-3 py-1.5 text-left text-xs hover:text-white">
+        <button
+          className="hover:bg-win-blue flex w-full cursor-pointer items-center gap-2 border-none bg-transparent px-3 py-1.5 text-left text-xs hover:text-white"
+          onClick={() => {
+            onClose();
+            onShutdown();
+          }}
+        >
           <span className="w-5 text-center">🔌</span>
           <span className="flex-1">Shut Down...</span>
         </button>
